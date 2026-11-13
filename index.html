@@ -1,4 +1,3 @@
-html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,7 +9,6 @@ html
 <meta name="theme-color" content="#020617">
 <title>HS Baseball Dugout Scout</title>
 
-<!-- Embedded Baseball App Icon -->
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://w3.org' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f172a'/><circle cx='50' cy='50' r='36' fill='%23f8fafc'/><path d='M32 20 Q46 50 32 80 M68 20 Q54 50 68 80' stroke='%23ef4444' stroke-width='4' fill='none' stroke-dasharray='5,4'/></svg>">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://w3.org' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f172a'/><circle cx='50' cy='50' r='36' fill='%23f8fafc'/><path d='M32 20 Q46 50 32 80 M68 20 Q54 50 68 80' stroke='%23ef4444' stroke-width='4' fill='none' stroke-dasharray='5,4'/></svg>">
 
@@ -68,8 +66,6 @@ html
   }
   .tag.active { background: var(--accent); color: #020617; border-color: var(--accent); }
   .tag.warn.active { background: var(--yellow); color: #020617; border-color: var(--yellow); }
-  
-  /* Spray Chart */
   .field-wrap { display: flex; flex-direction: column; align-items: center; margin: 10px 0; }
   svg.diamond { width: 100%; max-width: 280px; height: auto; touch-action: manipulation; cursor: crosshair; }
   .hit-type-bar { display: flex; gap: 6px; margin-bottom: 10px; }
@@ -80,8 +76,6 @@ html
   .hit-btn.active[data-type="GB"] { background: var(--yellow); color: #000; }
   .hit-btn.active[data-type="LD"] { background: var(--green); color: #000; }
   .hit-btn.active[data-type="FB"] { background: var(--accent); color: #000; }
-
-  /* Pitcher Table */
   .pitch-grid { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
   .pitch-grid th, .pitch-grid td { border: 1px solid var(--border); padding: 6px; text-align: center; }
   .pitch-btn {
@@ -100,17 +94,16 @@ html
 
 <header>
   <input type="text" id="oppName" placeholder="Opponent Team Name..." oninput="saveData()">
-  <button class="btn-sm btn-primary" onclick="exportReport()">Share / Copy</button>
+  <button type="button" class="btn-sm btn-primary" onclick="exportReport()">Share / Copy</button>
 </header>
 
 <nav>
-  <button class="active" onclick="switchTab('hitters', this)">Hitters</button>
-  <button onclick="switchTab('pitchers', this)">Pitchers</button>
-  <button onclick="switchTab('team', this)">Catcher & Team</button>
+  <button type="button" class="active" onclick="switchTab('hitters', this)">Hitters</button>
+  <button type="button" onclick="switchTab('pitchers', this)">Pitchers</button>
+  <button type="button" onclick="switchTab('team', this)">Catcher & Team</button>
 </nav>
 
 <div class="container">
-  <!-- HITTERS TAB -->
   <div id="tab-hitters" class="tab-content active">
     <div class="card">
       <div class="row">
@@ -121,13 +114,12 @@ html
           <option value="L">Bats L</option>
           <option value="S">Switch</option>
         </select>
-        <button class="btn-sm btn-primary" onclick="addHitter()">+ Add</button>
+        <button type="button" class="btn-sm btn-primary" onclick="addHitter()">+ Add</button>
       </div>
     </div>
     <div id="hittersList"></div>
   </div>
 
-  <!-- PITCHERS TAB -->
   <div id="tab-pitchers" class="tab-content">
     <div class="card">
       <div class="row">
@@ -137,13 +129,12 @@ html
           <option value="RHP">RHP</option>
           <option value="LHP">LHP</option>
         </select>
-        <button class="btn-sm btn-primary" onclick="addPitcher()">+ Add</button>
+        <button type="button" class="btn-sm btn-primary" onclick="addPitcher()">+ Add</button>
       </div>
     </div>
     <div id="pitchersList"></div>
   </div>
 
-  <!-- CATCHER & TEAM TAB -->
   <div id="tab-team" class="tab-content">
     <div class="card">
       <h3 style="margin-top:0;">Catcher Scouting</h3>
@@ -167,246 +158,41 @@ html
     </div>
 
     <div style="text-align: center; margin-top: 24px;">
-      <button class="btn-sm btn-danger" onclick="resetAll()">Reset All Game Data</button>
+      <button type="button" class="btn-sm btn-danger" onclick="resetAll()">Reset All Game Data</button>
     </div>
   </div>
 </div>
 
 <script>
-// 1. Dynamic PWA Manifest & Offline Service Worker Setup
-(function setupPWA() {
-  const manifest = {
-    name: "HS Baseball Dugout Scout",
-    short_name: "HS Scout",
-    start_url: ".",
-    display: "standalone",
-    background_color: "#0f172a",
-    theme_color: "#020617",
-    icons: [{
-      src: "data:image/svg+xml,<svg xmlns='http://w3.org' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f172a'/><circle cx='50' cy='50' r='36' fill='%23f8fafc'/><path d='M32 20 Q46 50 32 80 M68 20 Q54 50 68 80' stroke='%23ef4444' stroke-width='4' fill='none' stroke-dasharray='5,4'/></svg>",
-      sizes: "192x192",
-      type: "image/svg+xml"
-    }]
-  };
-  const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/manifest+json'});
-  const manifestLink = document.createElement('link');
-  manifestLink.rel = 'manifest';
-  manifestLink.href = URL.createObjectURL(manifestBlob);
-  document.head.appendChild(manifestLink);
-
-  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-    const swCode = `
-      const CACHE = 'hs-scout-v1';
-      self.addEventListener('install', e => {
-        e.waitUntil(caches.open(CACHE).then(c => c.addAll([location.href])));
-      });
-      self.addEventListener('fetch', e => {
-        e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
-      });
-    `;
-    const swBlob = new Blob([swCode], {type: 'application/javascript'});
-Use code with caution.
-navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(()=>{});
-}
-})();
-// 2. Scouting App Logic
 const HITTER_TAGS = ["Bunt Threat", "Fast Runner", "1st Pitch Swinger", "Chases High FB", "Pull Heavy", "Late on FB", "Slap/Drag"];
 const PITCHER_TAGS = ["Slow to Plate (>1.4s)", "Good Pickoff Move", "Slide Steps", "Wild / Nibbles", "1st Pitch Strike Heavy"];
 const CATCHER_TAGS = ["Blocks Well", "Struggles Blocking", "Throws Behind Runners", "Inaccurate Throws"];
 const TEAM_TAGS = ["Aggressive Baserunning", "Heavy Small Ball", "Squeeze Threat", "Steals on 1st Pitch", "Takes Until Strike"];
-let state = JSON.parse(localStorage.getItem('hs_scout_data')) || {
-oppName: '', hitters: [], pitchers: [],
-catcherInfo: '', catcherArm: '', catcherTags: [], catcherNotes: '',
-teamTags: [], teamNotes: ''
+
+let state = {
+  oppName: '', hitters: [], pitchers: [],
+  catcherInfo: '', catcherArm: '', catcherTags: [], catcherNotes: '',
+  teamTags: [], teamNotes: ''
 };
+
+try {
+  const saved = JSON.parse(localStorage.getItem('hs_scout_data'));
+  if (saved) state = Object.assign(state, saved);
+} catch (e) {}
+
 let currentHitType = {};
+
 function saveData() {
-state.oppName = document.getElementById('oppName').value;
-state.catcherInfo = document.getElementById('catcherInfo').value;
-state.catcherArm = document.getElementById('catcherArm').value;
-state.catcherNotes = document.getElementById('catcherNotes').value;
-state.teamNotes = document.getElementById('teamNotes').value;
-localStorage.setItem('hs_scout_data', JSON.stringify(state));
+  state.oppName = document.getElementById('oppName').value;
+  state.catcherInfo = document.getElementById('catcherInfo').value;
+  state.catcherArm = document.getElementById('catcherArm').value;
+  state.catcherNotes = document.getElementById('catcherNotes').value;
+  state.teamNotes = document.getElementById('teamNotes').value;
+  try { localStorage.setItem('hs_scout_data', JSON.stringify(state)); } catch (e) {}
 }
+
 function switchTab(tab, btn) {
-document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
-document.getElementById('tab-' + tab).classList.add('active');
-btn.classList.add('active');
-}
-function addHitter() {
-const num = document.getElementById('newHitterNum').value.trim();
-const name = document.getElementById('newHitterName').value.trim();
-const bats = document.getElementById('newHitterBats').value;
-if (!name && !num) return;
-state.hitters.push({ id: Date.now(), num, name: name || 'Player', bats, tags: [], hits: [], notes: '' });
-document.getElementById('newHitterNum').value = '';
-document.getElementById('newHitterName').value = '';
-saveData(); renderHitters();
-}
-function toggleHitterTag(id, tag) {
-const h = state.hitters.find(x => x.id === id);
-if (!h) return;
-h.tags = h.tags.includes(tag) ? h.tags.filter(t => t !== tag) : [...h.tags, tag];
-saveData(); renderHitters();
-}
-function setHitType(id, type) { currentHitType[id] = type; renderHitters(); }
-function plotHit(event, id) {
-const rect = event.currentTarget.getBoundingClientRect();
-const x = ((event.clientX - rect.left) / rect.width) * 200;
-const y = ((event.clientY - rect.top) / rect.height) * 200;
-const type = currentHitType[id] || 'GB';
-state.hitters.find(x => x.id === id).hits.push({ x: Math.round(x), y: Math.round(y), type });
-saveData(); renderHitters();
-}
-function undoHit(id) {
-const h = state.hitters.find(x => x.id === id);
-if (h && h.hits.length) { h.hits.pop(); saveData(); renderHitters(); }
-}
-function updateHitterNotes(id, val) {
-const h = state.hitters.find(x => x.id === id);
-if (h) { h.notes = val; saveData(); }
-}
-function deleteHitter(id) {
-if (!confirm('Remove this hitter?')) return;
-state.hitters = state.hitters.filter(x => x.id !== id);
-saveData(); renderHitters();
-}
-function renderHitters() {
-document.getElementById('hittersList').innerHTML = state.hitters.map((h, idx) => {
-const activeType = currentHitType[h.id] || 'GB';
-const dots = h.hits.map(hit => {
-const color = hit.type === 'GB' ? '#eab308' : hit.type === 'LD' ? '#22c55e' : '#38bdf8';
-return <circle cx="${hit.x}" cy="${hit.y}" r="5" fill="${color}" stroke="#000" stroke-width="1"/>;
-}).join('');
-return <div class="card"> <div class="row" style="justify-content:space-between;"> <strong>${idx + 1}. #${h.num} ${h.name} (${h.bats})</strong> <button class="btn-sm btn-danger" onclick="deleteHitter(${h.id})">X</button> </div> <div class="tag-grid"> ${HITTER_TAGS.map(t =>${t}).join('')} </div> <div class="field-wrap"> <div class="hit-type-bar"> <button class="hit-btn ${activeType==='GB'?'active':''}" data-type="GB" onclick="setHitType(${h.id},'GB')">Grounder</button> <button class="hit-btn ${activeType==='LD'?'active':''}" data-type="LD" onclick="setHitType(${h.id},'LD')">Line Drive</button> <button class="hit-btn ${activeType==='FB'?'active':''}" data-type="FB" onclick="setHitType(${h.id},'FB')">Fly Ball</button> <button class="btn-sm" onclick="undoHit(${h.id})">Undo</button> </div> <svg class="diamond" viewBox="0 0 200 200" onclick="plotHit(event, ${h.id})"> <path d="M 100 185 L 15 100 A 120 120 0 0 1 185 100 Z" fill="#14532d" stroke="#4ade80" stroke-width="2"/> <polygon points="100,185 60,145 100,105 140,145" fill="#78350f" stroke="#d97706" stroke-width="1.5"/> <circle cx="100" cy="145" r="5" fill="#d97706"/> <rect x="97" y="181" width="6" height="6" fill="#fff"/> ${dots} </svg> </div> <textarea placeholder="Pitch weaknesses, stance notes..." oninput="updateHitterNotes(${h.id}, this.value)">${h.notes}</textarea> </div>;
-}).join('');
-}
-function addPitcher() {
-const num = document.getElementById('newPitcherNum').value.trim();
-const name = document.getElementById('newPitcherName').value.trim();
-const throws = document.getElementById('newPitcherThrows').value;
-if (!name && !num) return;
-state.pitchers.push({
-id: Date.now(), num, name: name || 'Pitcher', throws, tags: [], notes: '',
-counts: { first: {FB:0,CB:0,SL:0,CH:0}, behind: {FB:0,CB:0,SL:0,CH:0}, twoStrike: {FB:0,CB:0,SL:0,CH:0} }
-});
-document.getElementById('newPitcherNum').value = '';
-document.getElementById('newPitcherName').value = '';
-saveData(); renderPitchers();
-}
-function logPitch(id, sit, pitch) {
-const p = state.pitchers.find(x => x.id === id);
-if (!p) return;
-p.counts[sit][pitch]++;
-saveData(); renderPitchers();
-}
-function togglePitcherTag(id, tag) {
-const p = state.pitchers.find(x => x.id === id);
-if (!p) return;
-p.tags = p.tags.includes(tag) ? p.tags.filter(t => t !== tag) : [...p.tags, tag];
-saveData(); renderPitchers();
-}
-function updatePitcherNotes(id, val) {
-const p = state.pitchers.find(x => x.id === id);
-if (p) { p.notes = val; saveData(); }
-}
-function deletePitcher(id) {
-if (!confirm('Remove this pitcher?')) return;
-state.pitchers = state.pitchers.filter(x => x.id !== id);
-saveData(); renderPitchers();
-}
-function renderPitchers() {
-const sits = [{ key: 'first', label: '1st Pitch' }, { key: 'behind', label: 'Behind' }, { key: 'twoStrike', label: '2-Strike' }];
-const pitches = ['FB', 'CB', 'SL', 'CH'];
-document.getElementById('pitchersList').innerHTML = state.pitchers.map(p => {
-const rows = sits.map(s => {
-const total = pitches.reduce((acc, k) => acc + p.counts[s.key][k], 0);
-return `
-\({s.label}<br><span style="color:var(--muted);font-size:11px;">(\){total})
-${pitches.map(pt => {
-const cnt = p.counts[s.key][pt];
-const pct = total ? Math.round((cnt / total) * 100) : 0;
-return <td> <button class="pitch-btn" onclick="logPitch(${p.id}, '${s.key}', '${pt}')">${pt}: ${cnt}</button> <div style="font-size:11px; margin-top:2px;">${pct}%</div> <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div> </td>;
-}).join('')}
-; }).join(''); return 
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
 
-
-#${p.num} ${p.name} (${p.throws})
-X
-
-
-${PITCHER_TAGS.map(t => <span class="tag ${p.tags.includes(t) ? 'active' : ''}" onclick="togglePitcherTag(${p.id}, '${t}')">${t}</span>).join('')}
-${rows}
-
-Situation	FB	CB	SL	CH
-
-${p.notes}
-`;
-}).join('');
-}
-function renderStaticTags() {
-document.getElementById('catcherTags').innerHTML = CATCHER_TAGS.map(t =>
-<span class="tag ${state.catcherTags.includes(t)?'active':''}" onclick="toggleStaticTag('catcherTags','${t}')">${t}</span>).join('');
-document.getElementById('teamTags').innerHTML = TEAM_TAGS.map(t =>
-<span class="tag ${state.teamTags.includes(t)?'active':''}" onclick="toggleStaticTag('teamTags','${t}')">${t}</span>).join('');
-}
-function toggleStaticTag(group, tag) {
-state[group] = state[group].includes(tag) ? state[group].filter(t => t !== tag) : [...state[group], tag];
-saveData(); renderStaticTags();
-}
-function exportReport() {
-let txt = SCOUTING REPORT: ${state.oppName || 'Opponent'}\n====================\n\nHITTERS:\n;
-state.hitters.forEach((h, i) => {
-txt += ${i+1}. #${h.num} ${h.name} (${h.bats}) - Tags: ${h.tags.join(', ') || 'None'} | Balls in Play: ${h.hits.length}\n;
-if (h.notes) txt +=    Notes: ${h.notes}\n;
-});
-txt += \nPITCHERS:\n;
-state.pitchers.forEach(p => {
-txt += #${p.num} ${p.name} (${p.throws}) - Tags: ${p.tags.join(', ') || 'None'}\n;
-txt +=    1st Pitch: FB(${p.counts.first.FB}) CB(${p.counts.first.CB}) SL(${p.counts.first.SL}) CH(${p.counts.first.CH})\n;
-txt +=    2-Strike:  FB(${p.counts.twoStrike.FB}) CB(${p.counts.twoStrike.CB}) SL(${p.counts.twoStrike.SL}) CH(${p.counts.twoStrike.CH})\n;
-if (p.notes) txt +=    Notes: ${p.notes}\n;
-});
-txt += \nCATCHER & TEAM:\nCatcher: ${state.catcherInfo} (${state.catcherArm}) | Tags: ${state.catcherTags.join(', ')}\n;
-txt += Team Tags: ${state.teamTags.join(', ')}\nNotes: ${state.teamNotes}\n;
-if (navigator.share) {
-navigator.share({ title: ${state.oppName || 'Opponent'} Scouting Report, text: txt }).catch(()=>{});
-} else {
-navigator.clipboard.writeText(txt).then(() => {
-alert('Full scouting report copied to clipboard! Paste it into a text or email.');
-}).catch(() => prompt('Copy your scouting report below:', txt));
-}
-}
-function resetAll() {
-if (!confirm('Erase all current scouting data to start a new game?')) return;
-localStorage.removeItem('hs_scout_data');
-location.reload();
-}
-document.getElementById('oppName').value = state.oppName;
-document.getElementById('catcherInfo').value = state.catcherInfo;
-document.getElementById('catcherArm').value = state.catcherArm;
-document.getElementById('catcherNotes').value = state.catcherNotes;
-document.getElementById('teamNotes').value = state.teamNotes;
-renderHitters(); renderPitchers(); renderStaticTags();
-
-
-
----
-
-### Step 2: Put It Online for Free (Takes 30 Seconds)
-To install a PWA onto your phone's home screen, your phone needs to load it from a web link (`https://`) first so it can cache the app for offline use:
-1. Put your `index.html` file inside a new folder on your computer (name the folder `hs-scout`).
-2. Go to **[://netlify.com](https://://netlify.com)** (no coding needed, free tier works great).
-3. Drag and drop that `hs-scout` folder onto the page.
-4. Netlify will immediately give you a live link (like `https://netlify.app`).
-
-### Step 3: Install It as an App on Your Phone
-* **On iPhone / iPad:** Open that link in **Safari**, tap the **Share icon** (square with an up arrow at the bottom), scroll down, and tap **Add to Home Screen**.
-* **On Android:** Open that link in **Chrome**, tap the **three dots menu** in the top right, and tap **Install app** or **Add to Home screen**.
-
-Once installed, you will see a baseball icon labeled **HS Scout** on your home screen. It opens full-screen without browser bars, uses your phone's native **Share** sheet when you tap **Share / Copy**, and works in airplane mode or concrete dugouts.
-
-<FollowUp>
-If you run into any trouble uploading the folder or want to tweak the app's features before putting it on your coaches' phones, let me know!
-</FollowUp>
